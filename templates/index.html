@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Wumpus World - Hunt the Wumpus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="A modern implementation of the classic Hunt the Wumpus game" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👹</text></svg>">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="header-content">
+        <h1>Wumpus World</h1>
+        <p class="subtitle">Navigate the cave, find the gold, and escape!</p>
+      </div>
+      <div class="controls">
+        <div class="control-group">
+          <label for="size">Cave Size:</label>
+          <input type="number" id="size" min="3" max="10" value="4" title="Size of the cave (3-10)">
+        </div>
+        <div class="control-group">
+          <label for="pits">Pits:</label>
+          <input type="number" id="pits" min="0" max="15" value="3" title="Number of pits (0-15)">
+        </div>
+        <button id="newGame" class="btn primary">New Game</button>
+        <div class="ai-controls">
+          <label class="ai-toggle" title="Enable AI Mode">
+            <input type="checkbox" id="aiToggle">
+            <span class="toggle-label">AI Assistant</span>
+          </label>
+          <button id="aiStep" class="btn" disabled>AI Step</button>
+        </div>
+        <button id="reveal" class="btn" title="Reveal the entire map">Reveal Map</button>
+      </div>
+    </header>
+
+    <main>
+      <!-- Game Instructions and Controls -->
+      <div class="instructions-panel">
+        <h2>How to Play</h2>
+        <div class="instructions-grid">
+          <div class="instruction-section">
+            <h3>🎯 Objective</h3>
+            <p>Find the gold and return to the starting position to win. Avoid the Wumpus and bottomless pits!</p>
+          </div>
+          <div class="instruction-section">
+            <h3>🎮 Controls</h3>
+            <p>Use the D-pad to move. Press GRAB to collect gold. Select direction and press SHOOT to fire an arrow.</p>
+          </div>
+          <div class="instruction-section">
+            <h3>⚠️ Dangers</h3>
+            <p>💨 Breeze: Pit nearby<br>👃 Stench: Wumpus nearby<br>✨ Glitter: Gold in this cell</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Area -->
+      <div class="game-area">
+        <!-- Game Board -->
+        <div class="game-board">
+          <div id="grid" class="grid"></div>
+          <div class="game-overlay" id="gameOverlay">
+            <div class="overlay-content">
+              <h2 id="gameOverTitle">Game Over</h2>
+              <p id="gameOverMessage">You've met your fate in the cave...</p>
+              <button id="playAgainBtn" class="btn primary">Play Again</button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Controls Panel -->
+        <div class="controls-pad">
+          <h3>Controls</h3>
+          <div class="dpad">
+            <button class="dpad-btn up" data-move="up" title="Move Up">
+              <span class="arrow-icon">⬆️</span>
+            </button>
+            <button class="dpad-btn left" data-move="left" title="Move Left">
+              <span class="arrow-icon">⬅️</span>
+            </button>
+            <button class="dpad-btn grab" id="grabBtn" title="Grab the gold">
+              <span class="btn-icon">🤲</span>
+            </button>
+            <button class="dpad-btn right" data-move="right" title="Move Right">
+              <span class="arrow-icon">➡️</span>
+            </button>
+            <button class="dpad-btn down" data-move="down" title="Move Down">
+              <span class="arrow-icon">⬇️</span>
+            </button>
+          </div>
+          
+          <div class="action-buttons">
+            <select id="shootDir" class="btn" title="Select shooting direction">
+              <option value="">🎯 Shoot Arrow</option>
+              <option value="up">↑ Shoot Up</option>
+              <option value="down">↓ Shoot Down</option>
+              <option value="left">← Shoot Left</option>
+              <option value="right">→ Shoot Right</option>
+            </select>
+            <button id="shootBtn" class="btn danger" title="Fire arrow in selected direction" disabled>
+              🏹 Shoot
+            </button>
+            <button id="climbBtn" class="btn primary" title="Climb out of the cave">
+              🧗 Climb Out
+            </button>
+          </div>
+        </div>
+        
+        <!-- Status Panel -->
+        <div class="panel">
+          <div class="status">
+            <div class="panel-header">
+              <h3>Game Status</h3>
+              <div class="score-display">Score: <span id="score">0</span></div>
+            </div>
+            <div class="status-message">
+              <p id="statusText">Welcome to Wumpus World! Use the controls to navigate the cave.</p>
+            </div>
+          </div>
+        
+        <div class="stats">
+          <h3>Player Stats</h3>
+          <ul>
+            <li>Arrows: <span id="arrow" class="stat-value">1</span></li>
+            <li>Wumpus: <span id="wumpus" class="stat-value">Alive</span></li>
+            <li>Gold: <span id="gold" class="stat-value">Not found</span></li>
+          </ul>
+        </div>
+        
+        <div class="percepts">
+          <h3>Perceptions</h3>
+          <ul>
+            <li class="percept" data-percept="breeze">
+              <span class="percept-icon">💨</span>
+              <span class="percept-label">Breeze</span>
+              <span id="breeze" class="percept-value">No</span>
+            </li>
+            <li class="percept" data-percept="stench">
+              <span class="percept-icon">👃</span>
+              <span class="percept-label">Stench</span>
+              <span id="stench" class="percept-value">No</span>
+            </li>
+            <li class="percept" data-percept="glitter">
+              <span class="percept-icon">✨</span>
+              <span class="percept-label">Glitter</span>
+              <span id="glitter" class="percept-value">No</span>
+            </li>
+            <li class="percept" data-percept="scream">
+              <span class="percept-icon">👂</span>
+              <span class="percept-label">Scream</span>
+              <span id="scream" class="percept-value">No</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="actions">
+          <h3>Game Controls</h3>
+          <div class="dpad-container">
+            <p class="dpad-instructions">
+              <strong>How to play:</strong> Use the D-pad to move. Press GRAB to collect gold. 
+              Select direction and press SHOOT to fire an arrow.
+            </p>
+            <div class="dpad">
+              <button class="dpad-btn up" data-move="up" title="Move Up">
+                <span class="arrow-icon">⬆️</span>
+              </button>
+              <button class="dpad-btn left" data-move="left" title="Move Left">
+                <span class="arrow-icon">⬅️</span>
+              </button>
+              <button class="dpad-btn grab" id="grabBtn" title="Grab the gold">
+                <span class="btn-icon">🤲</span>
+              </button>
+              <button class="dpad-btn right" data-move="right" title="Move Right">
+                <span class="arrow-icon">➡️</span>
+              </button>
+              <button class="dpad-btn down" data-move="down" title="Move Down">
+                <span class="arrow-icon">⬇️</span>
+              </button>
+            </div>
+            
+            <div class="action-buttons">
+              <select id="shootDir" class="btn" title="Select shooting direction">
+                <option value="">🎯 Shoot Arrow</option>
+                <option value="up">↑ Shoot Up</option>
+                <option value="down">↓ Shoot Down</option>
+                <option value="left">← Shoot Left</option>
+                <option value="right">→ Shoot Right</option>
+              </select>
+              <button id="shootBtn" class="btn danger" title="Fire arrow in selected direction" disabled>
+                🏹 Shoot
+              </button>
+              <button id="climbBtn" class="btn primary" title="Climb out of the cave">
+                🧗 Climb Out
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+  <!-- Instructions Modal -->
+  <div class="instructions-modal" id="instructionsModal">
+    <div class="modal-content">
+      <h2>How to Play Wumpus World</h2>
+      <div class="instructions-grid">
+        <div class="instruction">
+          <h3>🎯 Objective</h3>
+          <p>Find the gold and return to the starting position to win. Avoid the Wumpus and bottomless pits!</p>
+        </div>
+        <div class="instruction">
+          <h3>👃 Percepts</h3>
+          <ul>
+            <li><strong>Breeze</strong>: A pit is nearby</li>
+            <li><strong>Stench</strong>: The Wumpus is nearby</li>
+            <li><strong>Glitter</strong>: Gold is in this room</li>
+            <li><strong>Scream</strong>: You've killed the Wumpus!</li>
+          </ul>
+        </div>
+        <div class="instruction">
+          <h3>🎮 Controls</h3>
+          <ul>
+            <li>Use arrow buttons to move</li>
+            <li><strong>Grab</strong> to collect gold</li>
+            <li><strong>Shoot</strong> to kill the Wumpus</li>
+            <li><strong>Climb</strong> to exit with gold</li>
+          </ul>
+        </div>
+        <div class="instruction">
+          <h3>🏆 Scoring</h3>
+          <ul>
+            <li>+1000 for escaping with gold</li>
+            <li>-10 for each move</li>
+            <li>-100 for shooting an arrow</li>
+            <li>-1000 for dying</li>
+          </ul>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="startGameBtn" class="btn primary">Start Game</button>
+        <button id="closeInstructionsBtn" class="btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="app-footer">
+    <div class="footer-content">
+      <button id="helpBtn" class="btn" title="Show Instructions">❓ Help</button>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-icon">👹</span> Wumpus</span>
+        <span class="legend-item"><span class="legend-icon">🕳️</span> Pit</span>
+        <span class="legend-item"><span class="legend-icon">💰</span> Gold</span>
+      </div>
+      <div class="version">v1.0.0</div>
+    </div>
+  </footer>
+
+  <script src="/static/main.js" type="module"></script>
+</body>
+</html>
