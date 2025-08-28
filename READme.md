@@ -13,8 +13,6 @@ A Python-first Wumpus World web game with manual play and a simple heuristic AI 
 
 ## Quick Start
 
-```bash
-python -m venv .venv
-source .venv/bin/activate    # Windows: .venv\Scripts\activate
+
 pip install -r requirements.txt
 python app.py
